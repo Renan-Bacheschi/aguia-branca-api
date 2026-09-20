@@ -1,0 +1,14 @@
+spring:
+  application:
+    name: aguia-branca-api
+  mongodb:
+    uri: ${MONGODB_URI:mongodb://localhost:27017/aguia_branca}
+
+server:
+  port: 8080
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
