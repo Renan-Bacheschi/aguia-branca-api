@@ -5,13 +5,17 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.ConstraintViolationException;
 import org.springframework.dao.DuplicateKeyException;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 @RestControllerAdvice
@@ -30,6 +34,19 @@ public class GlobalExceptionHandler {
                 request);
         problemDetail.setProperty("errors", errors);
         return problemDetail;
+    }
+
+    @ExceptionHandler({
+            InvalidRequestException.class,
+            ConstraintViolationException.class,
+            HttpMessageNotReadableException.class,
+            MethodArgumentTypeMismatchException.class
+    })
+    ProblemDetail handleBadRequest(Exception exception, HttpServletRequest request) {
+        String detail = exception instanceof InvalidRequestException
+                ? exception.getMessage()
+                : "A requisição contém valores inválidos.";
+        return createProblem(HttpStatus.BAD_REQUEST, "Requisição inválida", detail, request);
     }
 
     @ExceptionHandler({InvalidCredentialsException.class, InvalidAuthenticatedUserException.class})
@@ -59,13 +76,21 @@ public class GlobalExceptionHandler {
                 request);
     }
 
-    @ExceptionHandler({EmailConflictException.class, DuplicateKeyException.class})
-    ProblemDetail handleConflict(RuntimeException exception, HttpServletRequest request) {
+    @ExceptionHandler(EmailConflictException.class)
+    ProblemDetail handleEmailConflict(EmailConflictException exception, HttpServletRequest request) {
         return createProblem(
                 HttpStatus.CONFLICT,
                 "Conflito de e-mail",
                 "O e-mail informado já está cadastrado.",
                 request);
+    }
+
+    @ExceptionHandler({ConflictException.class, DuplicateKeyException.class, OptimisticLockingFailureException.class})
+    ProblemDetail handleConflict(RuntimeException exception, HttpServletRequest request) {
+        String detail = exception instanceof ConflictException
+                ? exception.getMessage()
+                : "O recurso foi alterado ou já existe com os mesmos dados únicos.";
+        return createProblem(HttpStatus.CONFLICT, "Conflito", detail, request);
     }
 
     private ProblemDetail createProblem(

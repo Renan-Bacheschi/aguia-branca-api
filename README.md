@@ -1,7 +1,7 @@
 # Águia Branca API
 
 Backend do Challenge Águia Branca com Java 21, Spring Boot 4.1.1, Maven e MongoDB 8.
-Esta etapa implementa autenticação JWT e prepara a autorização dos perfis `OPERATOR`, `MANAGER` e `LEADER`.
+O backend implementa autenticação JWT e os fluxos de estratégias, ideias, projetos, progresso e resultados para os perfis `OPERATOR`, `MANAGER` e `LEADER`.
 
 ## Requisitos
 
@@ -134,9 +134,85 @@ São públicas apenas:
 - `GET /actuator/info`
 
 Todas as outras rotas exigem `Authorization: Bearer <jwt>`. A aplicação não usa sessão, login por formulário ou HTTP Basic.
-A autorização por método está habilitada para os próximos módulos usarem regras como `@PreAuthorize("hasRole('LEADER')")`.
+A autorização por método aplica as permissões de perfil em cada operação. A propriedade das ideias também é validada no serviço, sem aceitar autoria ou perfil enviados pelo cliente.
 
 Erros de validação, autenticação, autorização, recurso inexistente e conflito são retornados como `application/problem+json`.
+
+## Estratégias
+
+Todos os perfis autenticados consultam estratégias. Somente `LEADER` cria, altera e arquiva.
+
+| Método | Rota | Perfis |
+| --- | --- | --- |
+| `POST` | `/api/v1/strategies` | `LEADER` |
+| `GET` | `/api/v1/strategies` | Todos |
+| `GET` | `/api/v1/strategies/{id}` | Todos |
+| `PUT` | `/api/v1/strategies/{id}` | `LEADER` |
+| `DELETE` | `/api/v1/strategies/{id}` | `LEADER` |
+| `GET` | `/api/v1/strategies/{id}/history` | Todos |
+
+As respostas individuais incluem `ETag` com a revisão. Envie esse valor no cabeçalho `If-Match` ao alterar ou arquivar:
+
+```sh
+curl -i -X PUT \
+  -H "Authorization: Bearer $LEADER_TOKEN" \
+  -H 'Content-Type: application/json' \
+  -H 'If-Match: "1"' \
+  -d '{"title":"Eficiência operacional","description":"Reduzir desperdícios","category":"Operações","campaign":"Ciclo 2026","startsOn":"2026-01-01","endsOn":"2026-12-31"}' \
+  http://localhost:8080/api/v1/strategies/<id>
+```
+
+`GET /api/v1/strategies` aceita `page`, `size` e `active`. Sem `active`, retorna estratégias não arquivadas. `active=true` retorna as vigentes na data atual; `active=false` retorna as demais, inclusive as arquivadas. Cada criação, alteração ou arquivamento acrescenta uma revisão imutável ao histórico.
+
+## Ideias
+
+`OPERATOR` cria e acompanha apenas as próprias ideias. Um rascunho pode ser alterado, removido e enviado. `MANAGER` consulta ideias enviadas ou avaliadas e registra aprovação ou rejeição.
+
+| Método | Rota | Perfis |
+| --- | --- | --- |
+| `POST` | `/api/v1/ideas` | `OPERATOR` |
+| `GET` | `/api/v1/ideas` | `OPERATOR`, `MANAGER` |
+| `GET` | `/api/v1/ideas/{id}` | `OPERATOR` proprietário, `MANAGER` após envio |
+| `PUT` | `/api/v1/ideas/{id}` | `OPERATOR` proprietário enquanto `DRAFT` |
+| `DELETE` | `/api/v1/ideas/{id}` | `OPERATOR` proprietário enquanto `DRAFT` |
+| `POST` | `/api/v1/ideas/{id}/submit` | `OPERATOR` proprietário |
+| `PATCH` | `/api/v1/ideas/{id}/review` | `MANAGER` |
+
+Exemplo de avaliação:
+
+```sh
+curl -i -X PATCH \
+  -H "Authorization: Bearer $MANAGER_TOKEN" \
+  -H 'Content-Type: application/json' \
+  -d '{"decision":"APPROVED","priority":"HIGH","justification":"Alinhada ao ciclo estratégico."}' \
+  http://localhost:8080/api/v1/ideas/<id>/review
+```
+
+A listagem aceita `page`, `size`, `status`, `priority` e `strategyId`. Os filtros nunca ampliam o escopo permitido para o usuário.
+
+## Projetos e resultados
+
+Somente `MANAGER` cria, altera, atualiza o progresso e arquiva projetos. `MANAGER` e `LEADER` consultam projetos e resultados. Um projeto nasce de uma ideia `APPROVED`; o vínculo com a estratégia é herdado da ideia e cada ideia pode gerar no máximo um projeto.
+
+| Método | Rota | Perfis |
+| --- | --- | --- |
+| `POST` | `/api/v1/projects` | `MANAGER` |
+| `GET` | `/api/v1/projects` | `MANAGER`, `LEADER` |
+| `GET` | `/api/v1/projects/{id}` | `MANAGER`, `LEADER` |
+| `PUT` | `/api/v1/projects/{id}` | `MANAGER` |
+| `DELETE` | `/api/v1/projects/{id}` | `MANAGER` |
+| `PATCH` | `/api/v1/projects/{id}/progress` | `MANAGER` |
+| `POST` | `/api/v1/projects/{projectId}/results` | `MANAGER` |
+| `GET` | `/api/v1/projects/{projectId}/results` | `MANAGER`, `LEADER` |
+| `GET` | `/api/v1/projects/{projectId}/results/{resultId}` | `MANAGER`, `LEADER` |
+| `PUT` | `/api/v1/projects/{projectId}/results/{resultId}` | `MANAGER` |
+| `DELETE` | `/api/v1/projects/{projectId}/results/{resultId}` | `MANAGER` |
+
+A listagem de projetos aceita `page`, `size`, `strategyId`, `ideaId`, `status` e `stage`. Projetos arquivados continuam acessíveis por identificador para preservar o histórico, mas deixam de aceitar alterações.
+
+Para concluir um projeto, envie `stage=CLOSED`, `status=COMPLETED`, `progressPercentage=100` e `actualEndDate`. Projetos cancelados ou arquivados não aceitam novos resultados. Valores monetários são persistidos como `Decimal128` no MongoDB.
+
+Resultados `COST_SAVING` e `ADDITIONAL_REVENUE` exigem `financialAmount`. Os demais tipos exigem `unit`, `baselineValue` e `achievedValue`. A natureza pode ser `FORECAST` ou `ACTUAL`.
 
 ## Verificar os endpoints públicos
 
