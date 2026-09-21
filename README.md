@@ -1,7 +1,7 @@
 # Águia Branca API
 
 Backend do Challenge Águia Branca com Java 21, Spring Boot 4.1.1, Maven e MongoDB 8.
-Esta etapa prepara a infraestrutura local, a inicialização da aplicação e os endpoints de saúde e status.
+Esta etapa implementa autenticação JWT e prepara a autorização dos perfis `OPERATOR`, `MANAGER` e `LEADER`.
 
 ## Requisitos
 
@@ -24,57 +24,121 @@ No macOS, selecione o JDK 21 no terminal se outra versão estiver ativa:
 ```sh
 export JAVA_HOME=$(/usr/libexec/java_home -v 21)
 export PATH="$JAVA_HOME/bin:$PATH"
-./mvnw -version
 ```
+
+## Variáveis de ambiente
+
+| Variável | Obrigatória | Padrão | Finalidade |
+| --- | --- | --- | --- |
+| `JWT_SECRET` | Sim | nenhum | Chave Base64 de pelo menos 32 bytes usada para assinar os tokens HS256. |
+| `JWT_EXPIRATION_MINUTES` | Não | `120` | Tempo de validade do token em minutos. |
+| `APP_SEED_ENABLED` | Não | `false` | Cria as contas de demonstração quando definido como `true`. |
+| `MONGODB_URI` | Não | `mongodb://localhost:27017/aguia_branca` | Conexão com o MongoDB. |
+
+Gere uma chave local e configure o ambiente antes de iniciar a aplicação:
+
+```sh
+export JWT_SECRET=$(openssl rand -base64 32)
+export JWT_EXPIRATION_MINUTES=120
+export APP_SEED_ENABLED=true
+```
+
+O arquivo `.env.example` lista as variáveis sem incluir uma chave. O Spring Boot não carrega `.env` automaticamente; exporte as variáveis no terminal ou configure-as na IDE.
+A aplicação rejeita uma chave ausente, Base64 inválida ou com menos de 32 bytes.
 
 ## MongoDB local
 
-Com o Docker em execução, valide a configuração e suba o banco:
+Valide a configuração e suba o banco:
 
 ```sh
 docker compose config
 docker compose up -d
-```
-
-Confira o container e aguarde o healthcheck indicar `healthy`:
-
-```sh
 docker compose ps
-docker inspect --format '{{.State.Health.Status}}' aguia-branca-mongodb
 ```
 
-Para consultar os logs:
+O serviço usa a imagem `mongo:8`, o container `aguia-branca-mongodb` e o volume persistente `mongodb_data`.
+A porta 27017 fica publicada somente em `127.0.0.1` e o banco local não exige credenciais.
 
-```sh
-docker compose logs mongodb
-```
+O Compose define `GLIBC_TUNABLES=glibc.pthread.rseq=1` para compatibilidade com o kernel do Docker Desktop usado na validação local.
+O ajuste fica restrito ao container de desenvolvimento.
 
-O serviço `mongodb` usa a imagem `mongo:8`, o container `aguia-branca-mongodb` e o volume persistente `mongodb_data` em `/data/db`.
-A porta 27017 está publicada somente em `127.0.0.1`. O banco local não exige credenciais.
+## Contas de demonstração
 
-O Compose define `GLIBC_TUNABLES=glibc.pthread.rseq=1` para compatibilidade com o kernel do Docker Desktop usado na validação local (`7.0.12-linuxkit`).
-Essa configuração evita o uso do cache por CPU do TCMalloc afetado pela incompatibilidade com kernels recentes e segue o [teste de compatibilidade do próprio MongoDB](https://github.com/mongodb/mongo/blob/r8.3.11/jstests/noPassthrough/rseq_linux_compatibility/rseq_kernel_compatibility_check.js).
-O ajuste fica restrito ao container e pode ter impacto no desempenho do alocador; ele atende ao ambiente de desenvolvimento local desta etapa.
+As contas são criadas somente quando `APP_SEED_ENABLED=true`. O seed pode ser executado novamente sem duplicar usuários e persiste apenas hashes BCrypt.
+
+| Nome | E-mail | Senha | Perfil |
+| --- | --- | --- | --- |
+| Demo Operator | `operator@demo.com` | `Operator@123` | `OPERATOR` |
+| Demo Manager | `manager@demo.com` | `Manager@123` | `MANAGER` |
+| Demo Leader | `leader@demo.com` | `Leader@123` | `LEADER` |
+
+Essas credenciais são destinadas somente ao ambiente local de demonstração.
 
 ## Executar a aplicação
+
+Com as variáveis configuradas e o MongoDB disponível:
 
 ```sh
 ./mvnw spring-boot:run
 ```
 
-A aplicação usa a porta 8080 e a conexão `mongodb://localhost:27017/aguia_branca` por padrão.
-Para sobrescrever a conexão no macOS ou Linux:
+O e-mail é normalizado para letras minúsculas. O MongoDB cria um índice único para impedir duplicações.
+
+## Autenticação
+
+Faça login:
 
 ```sh
-MONGODB_URI=mongodb://localhost:27017/aguia_branca ./mvnw spring-boot:run
+curl -i \
+  -H 'Content-Type: application/json' \
+  -d '{"email":"operator@demo.com","password":"Operator@123"}' \
+  http://localhost:8080/api/v1/auth/login
 ```
 
-O arquivo `.env.example` documenta a variável disponível, sem segredos.
-O Spring Boot não carrega `.env` automaticamente; exporte `MONGODB_URI` no terminal ou configure-a no ambiente de execução da IDE.
+A resposta contém `accessToken`, `tokenType`, `expiresInSeconds` e os dados públicos do usuário:
 
-## Verificar os endpoints
+```json
+{
+  "accessToken": "<jwt>",
+  "tokenType": "Bearer",
+  "expiresInSeconds": 7200,
+  "user": {
+    "id": "<id>",
+    "name": "Demo Operator",
+    "email": "operator@demo.com",
+    "role": "OPERATOR"
+  }
+}
+```
 
-Com a aplicação executando, use outro terminal:
+Copie o token e consulte o usuário autenticado:
+
+```sh
+export ACCESS_TOKEN='<jwt>'
+
+curl -i \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
+  http://localhost:8080/api/v1/auth/me
+```
+
+`GET /api/v1/auth/me` retorna `id`, `name`, `email` e `role`. A resposta nunca inclui o hash da senha.
+Tokens ausentes, inválidos, expirados ou vinculados a um usuário removido, inativo ou com perfil alterado recebem HTTP 401.
+
+## Rotas e segurança
+
+São públicas apenas:
+
+- `POST /api/v1/auth/login`
+- `GET /api/v1/status`
+- `GET /actuator/health`
+- `GET /actuator/info`
+
+Todas as outras rotas exigem `Authorization: Bearer <jwt>`. A aplicação não usa sessão, login por formulário ou HTTP Basic.
+A autorização por método está habilitada para os próximos módulos usarem regras como `@PreAuthorize("hasRole('LEADER')")`.
+
+Erros de validação, autenticação, autorização, recurso inexistente e conflito são retornados como `application/problem+json`.
+
+## Verificar os endpoints públicos
 
 ```sh
 curl -i http://localhost:8080/actuator/health
@@ -82,43 +146,21 @@ curl -i http://localhost:8080/actuator/info
 curl -i http://localhost:8080/api/v1/status
 ```
 
-Com o MongoDB disponível, o health check retorna HTTP 200 e o campo `status` com valor `UP`.
-Ele verifica também a conexão com o banco; uma falha nessa conexão resulta em HTTP 503 e status `DOWN`.
-O endpoint de informações retorna HTTP 200 com `{}` nesta etapa.
-
-O endpoint de status retorna HTTP 200 com o nome configurado da aplicação, status `UP` e timestamp UTC no formato ISO 8601. Exemplo:
-
-```json
-{
-  "application": "aguia-branca-api",
-  "status": "UP",
-  "timestamp": "2026-09-20T12:00:00Z"
-}
-```
-
-O status confirma que a API responde; a saúde do MongoDB é consultada no Actuator.
-Somente `/actuator/health`, `/actuator/info` e `/api/v1/status` têm acesso público.
-Outras rotas exigem autenticação e uma requisição GET anônima recebe HTTP 401:
-
-```sh
-curl -i http://localhost:8080/api/v1/private
-```
-
-Somente `health` e `info` estão expostos no Actuator. A autenticação real será implementada em uma etapa posterior; login por formulário e HTTP Basic estão desabilitados, e a proteção CSRF permanece ativa.
+Com o MongoDB disponível, o health check retorna HTTP 200 e `UP`. Falhas na conexão resultam em HTTP 503 e `DOWN`.
 
 ## Compilar e testar
 
 ```sh
+./mvnw test
 ./mvnw clean verify
 ```
 
-Esse comando compila, executa os testes e gera o JAR executável em `target/aguia-branca-api-0.0.1-SNAPSHOT.jar`.
-Os testes automatizados podem rodar sem MongoDB. Apenas no contexto dos testes, o indicador de saúde do MongoDB fica desabilitado; a conexão real deve ser validada pelos comandos de execução local acima.
+Os testes automatizados não exigem MongoDB. A criação automática de índices e o indicador MongoDB são desabilitados somente nos testes de contexto que simulam o repositório.
 
 ## Parar os serviços
 
-Encerre a aplicação com `Ctrl+C` no terminal em que ela está executando.
-Para parar e remover o container do MongoDB, preservando o volume e os dados:
+Encerre a aplicação com `Ctrl+C` no terminal em que ela estiver executando.
+Para remover o container preservando o volume:
 
 ```sh
 docker compose down
@@ -126,6 +168,7 @@ docker compose down
 
 ## Problemas comuns
 
-- Se o Maven indicar uma versão incompatível de Java, ajuste `JAVA_HOME` para o JDK 21 e confira `./mvnw -version`.
-- Se o Docker informar que não consegue conectar ao daemon, inicie o Docker Desktop ou o serviço Docker e repita `docker info`.
-- Se a conexão com o MongoDB for recusada, confira `docker compose ps`, o healthcheck e o valor de `MONGODB_URI`.
+- Se o Maven indicar uma versão incompatível, ajuste `JAVA_HOME` para o JDK 21.
+- Se o Docker não alcançar o daemon, inicie o Docker Desktop ou o serviço Docker.
+- Se a conexão com o MongoDB falhar, confira `docker compose ps` e `MONGODB_URI`.
+- Se a aplicação rejeitar `JWT_SECRET`, gere novamente a chave com `openssl rand -base64 32`.

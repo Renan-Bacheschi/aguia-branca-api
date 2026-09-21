@@ -3,6 +3,16 @@ spring:
     name: aguia-branca-api
   mongodb:
     uri: ${MONGODB_URI:mongodb://localhost:27017/aguia_branca}
+  data:
+    mongodb:
+      auto-index-creation: true
+
+app:
+  jwt:
+    secret: ${JWT_SECRET:}
+    expiration-minutes: ${JWT_EXPIRATION_MINUTES:120}
+  seed:
+    enabled: ${APP_SEED_ENABLED:false}
 
 server:
   port: 8080

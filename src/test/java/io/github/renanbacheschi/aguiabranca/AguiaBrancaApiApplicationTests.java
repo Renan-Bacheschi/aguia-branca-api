@@ -20,7 +20,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@SpringBootTest(properties = "management.health.mongodb.enabled=false")
+@SpringBootTest(properties = {
+        "management.health.mongodb.enabled=false",
+        "spring.data.mongodb.auto-index-creation=false",
+        "app.jwt.secret=YWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWE="
+})
 @AutoConfigureMockMvc
 class AguiaBrancaApiApplicationTests {
 
@@ -68,7 +72,10 @@ class AguiaBrancaApiApplicationTests {
             "/actuator/info/details", "/actuator", "/actuator/env", "/login", "/"
     })
     void otherPathsRequireAuthentication(String path) throws Exception {
-        mockMvc.perform(get(path)).andExpect(status().isUnauthorized());
+        mockMvc.perform(get(path))
+                .andExpect(status().isUnauthorized())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.status").value(401));
     }
 
     @ParameterizedTest
