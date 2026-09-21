@@ -22,6 +22,7 @@ public class ProjectDocument {
     @Indexed(unique = true)
     private String ideaId;
 
+    @Indexed
     private String strategyId;
     private String name;
     private String description;

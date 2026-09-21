@@ -5,6 +5,7 @@ import java.time.Instant;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.annotation.Version;
 import org.springframework.data.mongodb.core.index.CompoundIndex;
+import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 @Document(collection = "ideas")
@@ -18,6 +19,7 @@ public class IdeaDocument {
     private String problem;
     private String proposedSolution;
     private String expectedBenefits;
+    @Indexed
     private String strategyId;
     private String authorUserId;
     private IdeaStatus status;
