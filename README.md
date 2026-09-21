@@ -214,6 +214,76 @@ Para concluir um projeto, envie `stage=CLOSED`, `status=COMPLETED`, `progressPer
 
 Resultados `COST_SAVING` e `ADDITIONAL_REVENUE` exigem `financialAmount`. Os demais tipos exigem `unit`, `baselineValue` e `achievedValue`. A natureza pode ser `FORECAST` ou `ACTUAL`.
 
+## Dashboard e relatórios
+
+Os relatórios são calculados pelo backend a partir dos documentos atuais do MongoDB e não são persistidos. Todos os valores financeiros são interpretados como BRL. Somente usuários `LEADER` podem acessar:
+
+- `GET /api/v1/reports/summary`
+- `GET /api/v1/reports/strategies/{strategyId}`
+- `GET /api/v1/reports/projects/{projectId}`
+
+`FORECAST` representa uma projeção e usa o investimento planejado. `ACTUAL` representa um valor realizado e usa o investimento realizado. Somente `COST_SAVING` e `ADDITIONAL_REVENUE` compõem os benefícios financeiros.
+
+Os indicadores financeiros seguem estas fórmulas:
+
+```text
+forecastNetBenefit = forecastFinancialBenefit - plannedInvestment
+actualNetBenefit   = actualFinancialBenefit - actualInvestment
+
+forecastRoi = forecastNetBenefit / plannedInvestment * 100
+actualRoi   = actualNetBenefit / actualInvestment * 100
+```
+
+Quando o investimento correspondente é zero, o ROI retorna `null` e o campo de disponibilidade retorna `false`. Percentuais disponíveis são arredondados para duas casas com `HALF_UP`. Benefício líquido e ROI negativos indicam que o benefício ficou abaixo do investimento.
+
+O ROI agregado é calculado sobre os benefícios e investimentos totais. Ele nunca é uma média simples dos ROIs dos projetos.
+
+Para métricas operacionais:
+
+```text
+PRODUCTIVITY_GAIN = (achievedValue - baselineValue) / baselineValue * 100
+TIME_REDUCTION    = (baselineValue - achievedValue) / baselineValue * 100
+```
+
+Se `baselineValue` não for maior que zero, `percentage` retorna `null` e `percentageAvailable` retorna `false`. Métricas `OTHER` permanecem disponíveis como itens individuais, sem cálculo automático de percentual. Unidades diferentes nunca são somadas.
+
+Projetos arquivados participam dos totais e indicadores históricos, mas não de `activeProjectCount`. Um projeto ativo é não arquivado e possui status `PLANNED` ou `IN_PROGRESS`. Projetos concluídos ou cancelados permanecem nos totais e agrupamentos por status. Ideias ainda não avaliadas aparecem no agrupamento de prioridade como `UNASSIGNED`.
+
+As consultas são realizadas em lotes por estratégia e projeto. O cálculo em memória atende ao volume atual e evita uma consulta individual para cada item.
+
+Exemplo de relatório geral:
+
+```sh
+curl -H "Authorization: Bearer $LEADER_TOKEN" \
+  http://localhost:8080/api/v1/reports/summary
+```
+
+Exemplo de relatório de estratégia:
+
+```sh
+curl -H "Authorization: Bearer $LEADER_TOKEN" \
+  http://localhost:8080/api/v1/reports/strategies/<strategyId>
+```
+
+Exemplo de relatório de projeto:
+
+```sh
+curl -H "Authorization: Bearer $LEADER_TOKEN" \
+  http://localhost:8080/api/v1/reports/projects/<projectId>
+```
+
+Um projeto com investimento realizado de `10000.00` e benefício financeiro realizado de `15000.00` retorna:
+
+```json
+{
+  "actualInvestment": 10000.00,
+  "actualFinancialBenefit": 15000.00,
+  "actualNetBenefit": 5000.00,
+  "actualRoi": 50.00,
+  "actualRoiAvailable": true
+}
+```
+
 ## Verificar os endpoints públicos
 
 ```sh
