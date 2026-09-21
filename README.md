@@ -33,6 +33,7 @@ export PATH="$JAVA_HOME/bin:$PATH"
 | `JWT_SECRET` | Sim | nenhum | Chave Base64 de pelo menos 32 bytes usada para assinar os tokens HS256. |
 | `JWT_EXPIRATION_MINUTES` | Não | `120` | Tempo de validade do token em minutos. |
 | `APP_SEED_ENABLED` | Não | `false` | Cria as contas de demonstração quando definido como `true`. |
+| `FRONTEND_ORIGIN` | Não | `http://localhost:5173` | Origem permitida pelo CORS para a aplicação Vue local. |
 | `MONGODB_URI` | Não | `mongodb://localhost:27017/aguia_branca` | Conexão com o MongoDB. |
 | `AI_ANALYSIS_ENABLED` | Não | `false` | Habilita a solicitação de pareceres consultivos para ideias. |
 | `OPENAI_API_KEY` | Somente com análise habilitada | nenhum | Chave da API OpenAI usada somente pelo backend. |
@@ -366,17 +367,27 @@ Os testes automatizados não exigem MongoDB. A criação automática de índices
 
 ## Sequência de demonstração local
 
-1. Inicie o MongoDB e exporte `JWT_SECRET`, `APP_SEED_ENABLED=true` e `AI_ANALYSIS_ENABLED=false`.
-2. Execute `./mvnw spring-boot:run` e faça login como `operator@demo.com`, `manager@demo.com` e `leader@demo.com`.
-3. Com o token de liderança, crie e consulte uma estratégia vigente.
-4. Com o token de operador, crie uma ideia e envie-a com `POST /api/v1/ideas/{id}/submit`.
-5. Com o token de gestor, confirme o 503 do parecer desabilitado, avalie a ideia, crie o projeto e registre um resultado.
-6. Com o token de liderança, consulte o relatório. Valide também uma rota protegida sem token (401), o parecer com
-   operador ou liderança (403) e uma tentativa de parecer em rascunho (409).
+1. Inicie o MongoDB e exporte `JWT_SECRET`, `APP_SEED_ENABLED=true`, `AI_ANALYSIS_ENABLED=false` e `FRONTEND_ORIGIN=http://localhost:5173`.
+2. Execute `./mvnw spring-boot:run` com o Corretto 21.
+3. Em outro terminal, instale e inicie o frontend:
 
-Não há aplicativo da Sprint 1 neste computador. Quando o frontend correto estiver disponível, ele deve manter o
-design existente, autenticar por `POST /api/v1/auth/login`, enviar `Authorization: Bearer <jwt>` a cada rota protegida
-e tratar os `ProblemDetail` 400, 401, 403, 404, 409 e 503. A chave OpenAI nunca deve ser enviada ao frontend.
+```sh
+cd frontend
+cp .env.example .env
+npm install
+npm run dev
+```
+
+O frontend está em `http://localhost:5173`, a API em `http://localhost:8080` e o MongoDB em `127.0.0.1:27017`.
+O token fica apenas na sessão do navegador. `VITE_API_BASE_URL` aceita outro endereço da API; nunca defina
+`OPENAI_API_KEY` no frontend.
+
+4. Entre como `leader@demo.com` (`Leader@123`) e crie uma estratégia vigente.
+5. Entre como `operator@demo.com` (`Operator@123`), crie uma ideia e envie-a.
+6. Entre como `manager@demo.com` (`Manager@123`), confirme que o parecer desabilitado informa indisponibilidade, aprove a ideia, crie o projeto, atualize progresso e registre um resultado.
+7. Retorne ao líder e consulte o dashboard, o detalhamento por estratégia e os indicadores financeiros devolvidos pela API.
+
+O frontend trata `ProblemDetail` 400, 401, 403, 404, 409 e 503; uma resposta 401 encerra a sessão automaticamente.
 
 ## Parar os serviços
 
@@ -393,3 +404,5 @@ docker compose down
 - Se o Docker não alcançar o daemon, inicie o Docker Desktop ou o serviço Docker.
 - Se a conexão com o MongoDB falhar, confira `docker compose ps` e `MONGODB_URI`.
 - Se a aplicação rejeitar `JWT_SECRET`, gere novamente a chave com `openssl rand -base64 32`.
+- Se o navegador bloquear uma requisição, confirme que `FRONTEND_ORIGIN` corresponde exatamente à origem do Vite e reinicie o backend.
+- Se a porta 5173 estiver ocupada, libere-a ou ajuste a porta do Vite e `FRONTEND_ORIGIN` juntos.
