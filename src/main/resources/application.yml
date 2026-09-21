@@ -13,6 +13,8 @@ app:
     expiration-minutes: ${JWT_EXPIRATION_MINUTES:120}
   seed:
     enabled: ${APP_SEED_ENABLED:false}
+  cors:
+    frontend-origin: ${FRONTEND_ORIGIN:http://localhost:5173}
   ai-analysis:
     enabled: ${AI_ANALYSIS_ENABLED:false}
     api-key: ${OPENAI_API_KEY:}

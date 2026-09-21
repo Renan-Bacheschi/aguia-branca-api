@@ -16,6 +16,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.aMapWithSize;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.options;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -64,6 +65,24 @@ class AguiaBrancaApiApplicationTests {
         mockMvc.perform(get("/actuator/info"))
                 .andExpect(status().isOk())
                 .andExpect(content().json("{}"));
+    }
+
+    @Test
+    void corsAllowsConfiguredFrontendOriginAndExposesEtag() throws Exception {
+        mockMvc.perform(options("/api/v1/strategies")
+                        .header("Origin", "http://localhost:5173")
+                        .header("Access-Control-Request-Method", "PUT")
+                        .header("Access-Control-Request-Headers", "Authorization,Content-Type,If-Match"))
+                .andExpect(status().isOk())
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers
+                        .header().string("Access-Control-Allow-Origin", "http://localhost:5173"))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers
+                        .header().string("Access-Control-Expose-Headers", "ETag"));
+
+        mockMvc.perform(options("/api/v1/strategies")
+                        .header("Origin", "http://not-allowed.example")
+                        .header("Access-Control-Request-Method", "GET"))
+                .andExpect(status().isForbidden());
     }
 
     @ParameterizedTest
