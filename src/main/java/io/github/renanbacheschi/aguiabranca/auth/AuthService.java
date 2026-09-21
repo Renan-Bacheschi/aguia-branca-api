@@ -18,9 +18,7 @@ public class AuthService {
     private final JwtTokenService jwtTokenService;
     private final UserRepository userRepository;
 
-    public AuthService(
-            AuthenticationManager authenticationManager,
-            JwtTokenService jwtTokenService,
+    public AuthService(AuthenticationManager authenticationManager, JwtTokenService jwtTokenService,
             UserRepository userRepository) {
         this.authenticationManager = authenticationManager;
         this.jwtTokenService = jwtTokenService;
@@ -30,9 +28,7 @@ public class AuthService {
     public LoginResponse authenticate(LoginRequest request) {
         try {
             Authentication authentication = authenticationManager.authenticate(
-                    UsernamePasswordAuthenticationToken.unauthenticated(
-                            request.email(),
-                            request.password()));
+                    UsernamePasswordAuthenticationToken.unauthenticated(request.email(), request.password()));
             AuthenticatedUser user = (AuthenticatedUser) authentication.getPrincipal();
             String token = jwtTokenService.generateToken(user);
 

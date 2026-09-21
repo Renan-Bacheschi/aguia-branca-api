@@ -100,17 +100,55 @@ public class StrategyDocument {
                 startsOn, endsOn, archived, userId, now));
     }
 
-    public String getId() { return id; }
-    public String getTitle() { return title; }
-    public String getDescription() { return description; }
-    public String getCategory() { return category; }
-    public String getCampaign() { return campaign; }
-    public LocalDate getStartsOn() { return startsOn; }
-    public LocalDate getEndsOn() { return endsOn; }
-    public boolean isArchived() { return archived; }
-    public long getRevision() { return revision; }
-    public String getCreatedByUserId() { return createdByUserId; }
-    public Instant getCreatedAt() { return createdAt; }
-    public Instant getUpdatedAt() { return updatedAt; }
-    public List<StrategyRevisionSnapshot> getHistory() { return List.copyOf(history); }
+    public String getId() {
+        return id;
+    }
+
+    public String getTitle() {
+        return title;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public String getCategory() {
+        return category;
+    }
+
+    public String getCampaign() {
+        return campaign;
+    }
+
+    public LocalDate getStartsOn() {
+        return startsOn;
+    }
+
+    public LocalDate getEndsOn() {
+        return endsOn;
+    }
+
+    public boolean isArchived() {
+        return archived;
+    }
+
+    public long getRevision() {
+        return revision;
+    }
+
+    public String getCreatedByUserId() {
+        return createdByUserId;
+    }
+
+    public Instant getCreatedAt() {
+        return createdAt;
+    }
+
+    public Instant getUpdatedAt() {
+        return updatedAt;
+    }
+
+    public List<StrategyRevisionSnapshot> getHistory() {
+        return List.copyOf(history);
+    }
 }

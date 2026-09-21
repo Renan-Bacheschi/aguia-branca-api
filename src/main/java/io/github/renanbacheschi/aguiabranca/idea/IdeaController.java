@@ -19,15 +19,19 @@ import org.springframework.web.bind.annotation.RestController;
 
 import io.github.renanbacheschi.aguiabranca.auth.AuthenticatedUserContext;
 import io.github.renanbacheschi.aguiabranca.common.PageResponse;
+import io.github.renanbacheschi.aguiabranca.idea.analysis.IdeaAnalysisResponse;
+import io.github.renanbacheschi.aguiabranca.idea.analysis.IdeaAnalysisService;
 
 @RestController
 @RequestMapping("/api/v1/ideas")
 public class IdeaController {
 
     private final IdeaService ideaService;
+    private final IdeaAnalysisService ideaAnalysisService;
 
-    public IdeaController(IdeaService ideaService) {
+    public IdeaController(IdeaService ideaService, IdeaAnalysisService ideaAnalysisService) {
         this.ideaService = ideaService;
+        this.ideaAnalysisService = ideaAnalysisService;
     }
 
     @PostMapping
@@ -87,5 +91,19 @@ public class IdeaController {
             @Valid @RequestBody ReviewRequest request,
             @AuthenticationPrincipal Jwt jwt) {
         return ideaService.review(id, request, AuthenticatedUserContext.from(jwt).userId());
+    }
+
+    @PostMapping("/{ideaId}/analysis")
+    @PreAuthorize("hasRole('MANAGER')")
+    ResponseEntity<IdeaAnalysisResponse> analyze(@PathVariable String ideaId, @AuthenticationPrincipal Jwt jwt) {
+        IdeaAnalysisResponse response = ideaAnalysisService.create(
+                ideaId, AuthenticatedUserContext.from(jwt).userId());
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    @GetMapping("/{ideaId}/analysis")
+    @PreAuthorize("hasRole('MANAGER')")
+    IdeaAnalysisResponse getAnalysis(@PathVariable String ideaId) {
+        return ideaAnalysisService.getLatest(ideaId);
     }
 }

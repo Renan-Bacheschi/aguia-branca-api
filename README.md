@@ -34,6 +34,9 @@ export PATH="$JAVA_HOME/bin:$PATH"
 | `JWT_EXPIRATION_MINUTES` | Não | `120` | Tempo de validade do token em minutos. |
 | `APP_SEED_ENABLED` | Não | `false` | Cria as contas de demonstração quando definido como `true`. |
 | `MONGODB_URI` | Não | `mongodb://localhost:27017/aguia_branca` | Conexão com o MongoDB. |
+| `AI_ANALYSIS_ENABLED` | Não | `false` | Habilita a solicitação de pareceres consultivos para ideias. |
+| `OPENAI_API_KEY` | Somente com análise habilitada | nenhum | Chave da API OpenAI usada somente pelo backend. |
+| `OPENAI_MODEL` | Somente com análise habilitada | nenhum | Modelo da API Responses usado para gerar o parecer. |
 
 Gere uma chave local e configure o ambiente antes de iniciar a aplicação:
 
@@ -41,6 +44,15 @@ Gere uma chave local e configure o ambiente antes de iniciar a aplicação:
 export JWT_SECRET=$(openssl rand -base64 32)
 export JWT_EXPIRATION_MINUTES=120
 export APP_SEED_ENABLED=true
+```
+
+Para habilitar a análise em um ambiente local, configure também as variáveis abaixo. Nunca inclua uma chave real
+em arquivos versionados, no frontend ou em requisições HTTP.
+
+```sh
+export AI_ANALYSIS_ENABLED=true
+export OPENAI_API_KEY='<chave-local>'
+export OPENAI_MODEL='<modelo-configurado>'
 ```
 
 O arquivo `.env.example` lista as variáveis sem incluir uma chave. O Spring Boot não carrega `.env` automaticamente; exporte as variáveis no terminal ou configure-as na IDE.
@@ -190,6 +202,50 @@ curl -i -X PATCH \
 
 A listagem aceita `page`, `size`, `status`, `priority` e `strategyId`. Os filtros nunca ampliam o escopo permitido para o usuário.
 
+## Parecer de IA para ideias
+
+O parecer é um apoio consultivo ao gestor. Ele não aprova, rejeita, altera status, prioridade, decisão manual ou
+qualquer outro campo da ideia. A avaliação final continua sendo feita por `PATCH /api/v1/ideas/{id}/review`.
+
+| Método | Rota | Perfil |
+| --- | --- | --- |
+| `POST` | `/api/v1/ideas/{ideaId}/analysis` | `MANAGER` |
+| `GET` | `/api/v1/ideas/{ideaId}/analysis` | `MANAGER` |
+
+Uma ideia precisa estar em `SUBMITTED`, `APPROVED` ou `REJECTED`. Cada `POST` cria uma nova versão persistida;
+o `GET` retorna a versão mais recente. O backend envia título, problema, solução, benefícios e os dados da estratégia
+relacionada. O conteúdo é tratado como dado não confiável e não pode alterar as instruções da análise.
+
+```sh
+curl -i -X POST \
+  -H "Authorization: Bearer $MANAGER_TOKEN" \
+  http://localhost:8080/api/v1/ideas/<ideaId>/analysis
+```
+
+Exemplo de resposta:
+
+```json
+{
+  "ideaId": "<ideaId>",
+  "strategyId": "<strategyId>",
+  "summary": "A proposta reduz trabalho manual em uma etapa operacional.",
+  "strategicAlignment": "Está alinhada à estratégia de eficiência operacional.",
+  "potentialBenefits": "Pode reduzir tempo e custos do processo.",
+  "risks": "O impacto depende da integração com os sistemas atuais.",
+  "missingInformation": "Faltam estimativas de volume e de investimento.",
+  "recommendation": "Avaliar viabilidade técnica e financeira antes da decisão manual.",
+  "generatedAt": "2026-09-21T18:00:00Z",
+  "generatedByUserId": "<managerId>",
+  "provider": "openai",
+  "model": "<modelo-configurado>"
+}
+```
+
+Com `AI_ANALYSIS_ENABLED=false`, o `POST` retorna HTTP 503 com `application/problem+json`. Timeout, falha de rede,
+limite do provedor e saída inválida também retornam 503 e não criam análise. A integração usa a API Responses e
+Structured Outputs da biblioteca oficial `com.openai:openai-java:4.65.0`; a documentação oficial ainda a classifica
+como beta. A aplicação não registra chaves, cabeçalhos de autenticação, prompts completos ou respostas técnicas do provedor.
+
 ## Projetos e resultados
 
 Somente `MANAGER` cria, altera, atualiza o progresso e arquiva projetos. `MANAGER` e `LEADER` consultam projetos e resultados. Um projeto nasce de uma ideia `APPROVED`; o vínculo com a estratégia é herdado da ideia e cada ideia pode gerar no máximo um projeto.
@@ -297,11 +353,30 @@ Com o MongoDB disponível, o health check retorna HTTP 200 e `UP`. Falhas na con
 ## Compilar e testar
 
 ```sh
+export JAVA_HOME=/Users/renanzin/Library/Java/JavaVirtualMachines/corretto-21.0.12.1/Contents/Home
+export PATH="$JAVA_HOME/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
+java -version
+docker compose up -d
+docker compose ps
 ./mvnw test
 ./mvnw clean verify
 ```
 
 Os testes automatizados não exigem MongoDB. A criação automática de índices e o indicador MongoDB são desabilitados somente nos testes de contexto que simulam o repositório.
+
+## Sequência de demonstração local
+
+1. Inicie o MongoDB e exporte `JWT_SECRET`, `APP_SEED_ENABLED=true` e `AI_ANALYSIS_ENABLED=false`.
+2. Execute `./mvnw spring-boot:run` e faça login como `operator@demo.com`, `manager@demo.com` e `leader@demo.com`.
+3. Com o token de liderança, crie e consulte uma estratégia vigente.
+4. Com o token de operador, crie uma ideia e envie-a com `POST /api/v1/ideas/{id}/submit`.
+5. Com o token de gestor, confirme o 503 do parecer desabilitado, avalie a ideia, crie o projeto e registre um resultado.
+6. Com o token de liderança, consulte o relatório. Valide também uma rota protegida sem token (401), o parecer com
+   operador ou liderança (403) e uma tentativa de parecer em rascunho (409).
+
+Não há aplicativo da Sprint 1 neste computador. Quando o frontend correto estiver disponível, ele deve manter o
+design existente, autenticar por `POST /api/v1/auth/login`, enviar `Authorization: Bearer <jwt>` a cada rota protegida
+e tratar os `ProblemDetail` 400, 401, 403, 404, 409 e 503. A chave OpenAI nunca deve ser enviada ao frontend.
 
 ## Parar os serviços
 

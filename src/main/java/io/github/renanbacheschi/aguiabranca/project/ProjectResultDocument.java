@@ -100,18 +100,59 @@ public class ProjectResultDocument {
         this.updatedAt = now;
     }
 
-    public String getId() { return id; }
-    public String getProjectId() { return projectId; }
-    public ResultType getType() { return type; }
-    public ResultNature getNature() { return nature; }
-    public String getDescription() { return description; }
-    public LocalDate getPeriodStart() { return periodStart; }
-    public LocalDate getPeriodEnd() { return periodEnd; }
-    public String getUnit() { return unit; }
-    public BigDecimal getBaselineValue() { return baselineValue; }
-    public BigDecimal getAchievedValue() { return achievedValue; }
-    public BigDecimal getFinancialAmount() { return financialAmount; }
-    public String getRecordedByUserId() { return recordedByUserId; }
-    public Instant getCreatedAt() { return createdAt; }
-    public Instant getUpdatedAt() { return updatedAt; }
+    public String getId() {
+        return id;
+    }
+
+    public String getProjectId() {
+        return projectId;
+    }
+
+    public ResultType getType() {
+        return type;
+    }
+
+    public ResultNature getNature() {
+        return nature;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public LocalDate getPeriodStart() {
+        return periodStart;
+    }
+
+    public LocalDate getPeriodEnd() {
+        return periodEnd;
+    }
+
+    public String getUnit() {
+        return unit;
+    }
+
+    public BigDecimal getBaselineValue() {
+        return baselineValue;
+    }
+
+    public BigDecimal getAchievedValue() {
+        return achievedValue;
+    }
+
+    public BigDecimal getFinancialAmount() {
+        return financialAmount;
+    }
+
+    public String getRecordedByUserId() {
+        return recordedByUserId;
+    }
+
+    public Instant getCreatedAt() {
+        return createdAt;
+    }
+
+    public Instant getUpdatedAt() {
+        return updatedAt;
+    }
 }

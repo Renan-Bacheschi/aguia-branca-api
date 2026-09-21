@@ -13,6 +13,10 @@ app:
     expiration-minutes: ${JWT_EXPIRATION_MINUTES:120}
   seed:
     enabled: ${APP_SEED_ENABLED:false}
+  ai-analysis:
+    enabled: ${AI_ANALYSIS_ENABLED:false}
+    api-key: ${OPENAI_API_KEY:}
+    model: ${OPENAI_MODEL:}
 
 server:
   port: 8080

@@ -122,23 +122,79 @@ public class ProjectDocument {
         this.updatedAt = now;
     }
 
-    public String getId() { return id; }
-    public String getIdeaId() { return ideaId; }
-    public String getStrategyId() { return strategyId; }
-    public String getName() { return name; }
-    public String getDescription() { return description; }
-    public String getResponsibleName() { return responsibleName; }
-    public ProjectStage getStage() { return stage; }
-    public ProjectStatus getStatus() { return status; }
-    public LocalDate getPlannedStartDate() { return plannedStartDate; }
-    public LocalDate getPlannedEndDate() { return plannedEndDate; }
-    public LocalDate getActualEndDate() { return actualEndDate; }
-    public BigDecimal getPlannedInvestment() { return plannedInvestment; }
-    public BigDecimal getActualInvestment() { return actualInvestment; }
-    public int getProgressPercentage() { return progressPercentage; }
-    public boolean isArchived() { return archived; }
-    public String getCreatedByUserId() { return createdByUserId; }
-    public String getProgressUpdatedByUserId() { return progressUpdatedByUserId; }
-    public Instant getCreatedAt() { return createdAt; }
-    public Instant getUpdatedAt() { return updatedAt; }
+    public String getId() {
+        return id;
+    }
+
+    public String getIdeaId() {
+        return ideaId;
+    }
+
+    public String getStrategyId() {
+        return strategyId;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public String getResponsibleName() {
+        return responsibleName;
+    }
+
+    public ProjectStage getStage() {
+        return stage;
+    }
+
+    public ProjectStatus getStatus() {
+        return status;
+    }
+
+    public LocalDate getPlannedStartDate() {
+        return plannedStartDate;
+    }
+
+    public LocalDate getPlannedEndDate() {
+        return plannedEndDate;
+    }
+
+    public LocalDate getActualEndDate() {
+        return actualEndDate;
+    }
+
+    public BigDecimal getPlannedInvestment() {
+        return plannedInvestment;
+    }
+
+    public BigDecimal getActualInvestment() {
+        return actualInvestment;
+    }
+
+    public int getProgressPercentage() {
+        return progressPercentage;
+    }
+
+    public boolean isArchived() {
+        return archived;
+    }
+
+    public String getCreatedByUserId() {
+        return createdByUserId;
+    }
+
+    public String getProgressUpdatedByUserId() {
+        return progressUpdatedByUserId;
+    }
+
+    public Instant getCreatedAt() {
+        return createdAt;
+    }
+
+    public Instant getUpdatedAt() {
+        return updatedAt;
+    }
 }

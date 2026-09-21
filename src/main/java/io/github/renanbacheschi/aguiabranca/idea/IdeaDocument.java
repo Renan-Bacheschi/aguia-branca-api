@@ -93,19 +93,63 @@ public class IdeaDocument {
         this.updatedAt = now;
     }
 
-    public String getId() { return id; }
-    public String getTitle() { return title; }
-    public String getProblem() { return problem; }
-    public String getProposedSolution() { return proposedSolution; }
-    public String getExpectedBenefits() { return expectedBenefits; }
-    public String getStrategyId() { return strategyId; }
-    public String getAuthorUserId() { return authorUserId; }
-    public IdeaStatus getStatus() { return status; }
-    public IdeaPriority getPriority() { return priority; }
-    public String getReviewJustification() { return reviewJustification; }
-    public String getReviewedByUserId() { return reviewedByUserId; }
-    public Instant getSubmittedAt() { return submittedAt; }
-    public Instant getReviewedAt() { return reviewedAt; }
-    public Instant getCreatedAt() { return createdAt; }
-    public Instant getUpdatedAt() { return updatedAt; }
+    public String getId() {
+        return id;
+    }
+
+    public String getTitle() {
+        return title;
+    }
+
+    public String getProblem() {
+        return problem;
+    }
+
+    public String getProposedSolution() {
+        return proposedSolution;
+    }
+
+    public String getExpectedBenefits() {
+        return expectedBenefits;
+    }
+
+    public String getStrategyId() {
+        return strategyId;
+    }
+
+    public String getAuthorUserId() {
+        return authorUserId;
+    }
+
+    public IdeaStatus getStatus() {
+        return status;
+    }
+
+    public IdeaPriority getPriority() {
+        return priority;
+    }
+
+    public String getReviewJustification() {
+        return reviewJustification;
+    }
+
+    public String getReviewedByUserId() {
+        return reviewedByUserId;
+    }
+
+    public Instant getSubmittedAt() {
+        return submittedAt;
+    }
+
+    public Instant getReviewedAt() {
+        return reviewedAt;
+    }
+
+    public Instant getCreatedAt() {
+        return createdAt;
+    }
+
+    public Instant getUpdatedAt() {
+        return updatedAt;
+    }
 }
