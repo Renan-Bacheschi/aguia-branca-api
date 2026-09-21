@@ -93,6 +93,17 @@ public class GlobalExceptionHandler {
         return createProblem(HttpStatus.CONFLICT, "Conflito", detail, request);
     }
 
+    @ExceptionHandler(AnalysisServiceUnavailableException.class)
+    ProblemDetail handleAnalysisUnavailable(
+            AnalysisServiceUnavailableException exception,
+            HttpServletRequest request) {
+        return createProblem(
+                HttpStatus.SERVICE_UNAVAILABLE,
+                "Serviço de análise indisponível",
+                exception.getMessage(),
+                request);
+    }
+
     private ProblemDetail createProblem(
             HttpStatus status,
             String title,
