@@ -354,8 +354,6 @@ Com o MongoDB disponível, o health check retorna HTTP 200 e `UP`. Falhas na con
 ## Compilar e testar
 
 ```sh
-export JAVA_HOME=/Users/renanzin/Library/Java/JavaVirtualMachines/corretto-21.0.12.1/Contents/Home
-export PATH="$JAVA_HOME/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
 java -version
 docker compose up -d
 docker compose ps
