@@ -56,7 +56,7 @@ ENTRYPOINT ["java", "-jar", "/app/app.jar"]
 
 ## Prints do funcionamento
 
-Anexar evidências reais após a primeira execução do workflow: tela **Actions** com os três jobs verdes; log do `clean verify`; logs de staging e produção com verificação do healthcheck; terminais mostrando `curl http://127.0.0.1:8081/actuator/health` e `curl http://127.0.0.1:8082/actuator/health` retornando `UP`; opcionalmente `docker compose -p aguia-staging ps` e `docker compose -p aguia-producao ps`. Ainda não há prints de pipeline executado neste repositório.
+Evidência de execução real: [workflow #1 concluído com sucesso em 12/10/2026](https://github.com/Renan-Bacheschi/aguia-branca-devops/actions/runs/38317972383). O job de CI executou **90 testes, sem falhas**. Os jobs de staging e produção construíram a imagem e obtiveram `UP` nos respectivos healthchecks. Para o PDF, incluir prints dessa execução e capturas locais dos comandos `curl http://127.0.0.1:8081/actuator/health` e `curl http://127.0.0.1:8082/actuator/health` retornando `UP`. As URLs funcionam no Mac que hospeda o runner.
 
 ## Tecnologias utilizadas
 
@@ -69,10 +69,10 @@ Java 21, Spring Boot 4.1.1, Maven Wrapper, MongoDB 8, Docker, Docker Compose, Gi
 | Projeto organizado e compactado em ZIP | Pendente: gerar ZIP final |
 | Dockerfile funcional | Feito: build local validado |
 | Docker Compose com API, banco, volume, rede e variáveis | Feito: staging e produção locais validados manualmente |
-| Pipeline de build, testes e deploy automático | Configurado; execução real pendente de runner e secrets |
-| README com instruções e prints | Instruções feitas; prints pendentes |
+| Pipeline de build, testes e deploy automático | Feito: workflow #1 concluiu os três jobs com sucesso |
+| README com instruções e prints | Instruções e link da execução feitos; prints locais pendentes |
 | PDF ou PPT com integrantes e evidências | Pendente |
-| Deploy em staging e produção | Manual local validado; automático pendente |
+| Deploy em staging e produção | Feito: deploy automático e healthchecks `UP` nos dois ambientes |
 
 **Integrante:** Renan Bacheschi Mafra. Não marque os itens pendentes como concluídos antes da execução e captura das evidências.
 
