@@ -1,5 +1,83 @@
 # Águia Branca API
 
+## Projeto - Cidades ESG Inteligentes: Águia Branca
+
+Este desafio de DevOps reaproveita a API Java Spring do Challenge Águia Branca. O recorte ESG deve ser demonstrado com dados do domínio: por exemplo, cadastrar uma estratégia de redução de desperdício, uma ideia correspondente, um projeto aprovado e um resultado mensurável. O código não rotula automaticamente toda ideia como ESG; apresente essa ligação nas evidências e na documentação.
+
+## Como executar localmente com Docker
+
+Abra o Docker Desktop no Mac e aguarde o mecanismo iniciar. Na raiz do projeto, em um terminal:
+
+```sh
+export JWT_SECRET="$(openssl rand -base64 32)"
+docker compose up -d --build
+docker compose ps
+curl -fsS http://127.0.0.1:8080/actuator/health
+```
+
+A API responde em `http://127.0.0.1:8080`; o MongoDB fica em `127.0.0.1:27017`. O endpoint deve retornar `UP`. Para parar sem apagar os dados: `docker compose down`. Não execute `./mvnw spring-boot:run` ao mesmo tempo na porta 8080. Para rodar pela IDE, suba apenas o banco com `docker compose up -d mongodb` e exporte `JWT_SECRET` para a IDE/terminal.
+
+Para inspecionar ambientes isolados na mesma máquina, use `APP_PORT`, `MONGO_PORT`, `IMAGE_TAG` e `-p` com valores diferentes. O pipeline usa `aguia-staging` (8081/27018) e `aguia-producao` (8082/27019). Cada projeto Compose tem sua própria rede e seu próprio volume persistente do MongoDB. Os endereços estão restritos a `127.0.0.1` do Mac.
+
+## Pipeline CI/CD
+
+Arquivo: [`.github/workflows/ci-cd.yml`](.github/workflows/ci-cd.yml). Um push em `main` ou execução manual inicia:
+
+1. **Build e testes** em runner hospedado pelo GitHub: JDK 21 e `./mvnw -B clean verify`.
+2. **Staging** em runner macOS ARM64 do próprio repositório: constrói a imagem Docker com a tag do SHA do commit, sobe `aguia-staging` e exige HTTP 200 de `/actuator/health` na porta 8081.
+3. **Produção** no runner macOS ARM64, somente após staging saudável: constrói a mesma revisão, sobe `aguia-producao` e exige HTTP 200 na porta 8082.
+
+O GitHub não alcança o `localhost` do seu Mac diretamente. Para executar as duas etapas de deploy, mantenha Docker Desktop aberto e registre um **self-hosted runner macOS ARM64** neste repositório privado em **Settings → Actions → Runners → New self-hosted runner**. Siga os comandos exibidos pelo GitHub e deixe `./run.sh` em execução em um terminal. Crie os environments **staging** e **production** em **Settings → Environments**; em cada um, adicione um secret chamado `JWT_SECRET` com um valor Base64 distinto gerado por `openssl rand -base64 32`. Guarde cada valor no respectivo environment e não publique em prints, commits ou mensagens. Deixe os environments sem aprovação manual obrigatória para o deploy ser automático.
+
+Os dados do Mongo ficam em volumes separados e sobrevivem aos redeploys. O runner e o Docker Desktop precisam estar ligados enquanto os jobs executam; as URLs de staging e produção só funcionam no Mac. Para uma demonstração em endereço público seria necessária infraestrutura acessível na rede, que não faz parte desta configuração.
+
+## Containerização
+
+O [`Dockerfile`](Dockerfile) usa duas etapas: compila com JDK 21 e Maven Wrapper, depois copia o JAR para uma imagem JRE 21. O `docker-compose.yml` conecta a API ao MongoDB 8 em rede interna, espera o healthcheck do banco, publica portas apenas no localhost e monta volume para os dados. Variáveis de ambiente configuram JWT, portas e tag da imagem. O build do Docker usa `-DskipTests` porque os testes são executados antes pelo job de CI.
+
+```dockerfile
+FROM eclipse-temurin:21-jdk AS build
+WORKDIR /app
+
+COPY .mvn .mvn
+COPY mvnw pom.xml ./
+COPY src ./src
+
+RUN chmod +x mvnw && ./mvnw -B -DskipTests package
+
+FROM eclipse-temurin:21-jre
+WORKDIR /app
+
+COPY --from=build /app/target/*.jar app.jar
+
+EXPOSE 8080
+ENTRYPOINT ["java", "-jar", "/app/app.jar"]
+```
+
+## Prints do funcionamento
+
+Anexar evidências reais após a primeira execução do workflow: tela **Actions** com os três jobs verdes; log do `clean verify`; logs de staging e produção com verificação do healthcheck; terminais mostrando `curl http://127.0.0.1:8081/actuator/health` e `curl http://127.0.0.1:8082/actuator/health` retornando `UP`; opcionalmente `docker compose -p aguia-staging ps` e `docker compose -p aguia-producao ps`. Ainda não há prints de pipeline executado neste repositório.
+
+## Tecnologias utilizadas
+
+Java 21, Spring Boot 4.1.1, Maven Wrapper, MongoDB 8, Docker, Docker Compose, GitHub Actions e GitHub self-hosted runner macOS ARM64. O frontend Vue/Vite da aplicação anterior pode ser usado para demonstrar o caso ESG.
+
+## Checklist de entrega
+
+| Item | Situação |
+| --- | --- |
+| Projeto organizado e compactado em ZIP | Pendente: gerar ZIP final |
+| Dockerfile funcional | Feito: build local validado |
+| Docker Compose com API, banco, volume, rede e variáveis | Feito: staging e produção locais validados manualmente |
+| Pipeline de build, testes e deploy automático | Configurado; execução real pendente de runner e secrets |
+| README com instruções e prints | Instruções feitas; prints pendentes |
+| PDF ou PPT com integrantes e evidências | Pendente |
+| Deploy em staging e produção | Manual local validado; automático pendente |
+
+**Integrante:** Renan Bacheschi Mafra. Não marque os itens pendentes como concluídos antes da execução e captura das evidências.
+
+---
+
 Backend do Challenge Águia Branca com Java 21, Spring Boot 4.1.1, Maven e MongoDB 8.
 O backend implementa autenticação JWT e os fluxos de estratégias, ideias, projetos, progresso e resultados para os perfis `OPERATOR`, `MANAGER` e `LEADER`.
 
@@ -64,12 +142,11 @@ A aplicação rejeita uma chave ausente, Base64 inválida ou com menos de 32 byt
 Valide a configuração e suba o banco:
 
 ```sh
-docker compose config
-docker compose up -d
+docker compose up -d mongodb
 docker compose ps
 ```
 
-O serviço usa a imagem `mongo:8`, o container `aguia-branca-mongodb` e o volume persistente `mongodb_data`.
+O serviço usa a imagem `mongo:8` e um volume persistente `mongodb_data` dentro do projeto Compose.
 A porta 27017 fica publicada somente em `127.0.0.1` e o banco local não exige credenciais.
 
 O Compose define `GLIBC_TUNABLES=glibc.pthread.rseq=1` para compatibilidade com o kernel do Docker Desktop usado na validação local.
@@ -355,7 +432,7 @@ Com o MongoDB disponível, o health check retorna HTTP 200 e `UP`. Falhas na con
 
 ```sh
 java -version
-docker compose up -d
+docker compose up -d mongodb
 docker compose ps
 ./mvnw test
 ./mvnw clean verify
@@ -365,7 +442,7 @@ Os testes automatizados não exigem MongoDB. A criação automática de índices
 
 ## Sequência de demonstração local
 
-1. Inicie o MongoDB e exporte `JWT_SECRET`, `APP_SEED_ENABLED=true`, `AI_ANALYSIS_ENABLED=false` e `FRONTEND_ORIGIN=http://localhost:5173`.
+1. Inicie apenas o MongoDB com `docker compose up -d mongodb` e exporte `JWT_SECRET`, `APP_SEED_ENABLED=true`, `AI_ANALYSIS_ENABLED=false` e `FRONTEND_ORIGIN=http://localhost:5173`.
 2. Execute `./mvnw spring-boot:run` com o Corretto 21.
 3. Em outro terminal, instale e inicie o frontend:
 
