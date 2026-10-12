@@ -1,0 +1,96 @@
+name: CI/CD Aguia Branca
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: aguia-branca-deploy
+  cancel-in-progress: false
+
+jobs:
+  build_test:
+    name: Build e testes
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+      - name: Compilar e executar testes
+        run: |
+          chmod +x ./mvnw
+          ./mvnw -B clean verify
+
+  staging:
+    name: Deploy staging
+    needs: build_test
+    runs-on: [self-hosted, macOS, ARM64]
+    environment: staging
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verificar Docker
+        run: docker info >/dev/null
+      - name: Construir imagem da revisao
+        run: docker build -t "aguia-branca-api:${GITHUB_SHA}" .
+      - name: Subir staging e verificar saude
+        env:
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          IMAGE_TAG: ${{ github.sha }}
+          APP_PORT: '8081'
+          MONGO_PORT: '27018'
+        run: |
+          if [ -z "$JWT_SECRET" ]; then
+            echo 'Configure JWT_SECRET no environment staging.' >&2
+            exit 1
+          fi
+          docker compose -p aguia-staging up -d --no-build
+          for attempt in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:8081/actuator/health; then
+              exit 0
+            fi
+            sleep 2
+          done
+          echo 'Staging nao respondeu com saude HTTP 200.' >&2
+          exit 1
+
+  production:
+    name: Deploy producao
+    needs: staging
+    runs-on: [self-hosted, macOS, ARM64]
+    environment: production
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verificar Docker
+        run: docker info >/dev/null
+      - name: Construir imagem da revisao
+        run: docker build -t "aguia-branca-api:${GITHUB_SHA}" .
+      - name: Subir producao e verificar saude
+        env:
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          IMAGE_TAG: ${{ github.sha }}
+          APP_PORT: '8082'
+          MONGO_PORT: '27019'
+        run: |
+          if [ -z "$JWT_SECRET" ]; then
+            echo 'Configure JWT_SECRET no environment production.' >&2
+            exit 1
+          fi
+          docker compose -p aguia-producao up -d --no-build
+          for attempt in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:8082/actuator/health; then
+              exit 0
+            fi
+            sleep 2
+          done
+          echo 'Producao nao respondeu com saude HTTP 200.' >&2
+          exit 1
