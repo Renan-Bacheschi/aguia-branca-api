@@ -17,7 +17,7 @@ services:
       start_period: 10s
 
   api:
-    image: aguia-branca-api:dev
+    image: aguia-branca-api:${IMAGE_TAG:-dev}
     build: .
     environment:
       MONGODB_URI: mongodb://mongodb:27017/aguia_branca
