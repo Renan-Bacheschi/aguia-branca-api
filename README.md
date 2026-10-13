@@ -56,7 +56,7 @@ ENTRYPOINT ["java", "-jar", "/app/app.jar"]
 
 ## Prints do funcionamento
 
-Evidência de execução real: [workflow #1 concluído com sucesso em 12/10/2026](https://github.com/Renan-Bacheschi/aguia-branca-devops/actions/runs/38317972383). O job de CI executou **90 testes, sem falhas**. Os jobs de staging e produção construíram a imagem e obtiveram `UP` nos respectivos healthchecks. Para o PDF, incluir prints dessa execução e capturas locais dos comandos `curl http://127.0.0.1:8081/actuator/health` e `curl http://127.0.0.1:8082/actuator/health` retornando `UP`. As URLs funcionam no Mac que hospeda o runner.
+Evidência de execução real: [workflow #1 concluído com sucesso em 12/10/2026](https://github.com/Renan-Bacheschi/aguia-branca-devops/actions/runs/38317972383). O job de CI executou **90 testes, sem falhas**. Os jobs de staging e produção construíram a imagem e obtiveram `UP` nos respectivos healthchecks. O PDF em `docs/Desafio_DevOps_Aguia_Branca.pdf` contém capturas da execução do pipeline, do runner e dos comandos `curl` nos dois ambientes, ambos com `UP`. As URLs funcionam no Mac que hospeda o runner.
 
 ## Tecnologias utilizadas
 
@@ -66,15 +66,15 @@ Java 21, Spring Boot 4.1.1, Maven Wrapper, MongoDB 8, Docker, Docker Compose, Gi
 
 | Item | Situação |
 | --- | --- |
-| Projeto organizado e compactado em ZIP | Pendente: gerar ZIP final |
+| Projeto organizado e compactado em ZIP | Feito: ZIP da entrega com código completo e PDF em `docs/` |
 | Dockerfile funcional | Feito: build local validado |
 | Docker Compose com API, banco, volume, rede e variáveis | Feito: staging e produção locais validados manualmente |
 | Pipeline de build, testes e deploy automático | Feito: workflow #1 concluiu os três jobs com sucesso |
-| README com instruções e prints | Instruções e link da execução feitos; prints locais pendentes |
-| PDF ou PPT com integrantes e evidências | Pendente |
+| README com instruções e prints | Feito: instruções, link da execução e capturas no PDF incluso |
+| PDF ou PPT com integrantes e evidências | Feito: PDF em `docs/` no ZIP |
 | Deploy em staging e produção | Feito: deploy automático e healthchecks `UP` nos dois ambientes |
 
-**Integrante:** Renan Bacheschi Mafra. Não marque os itens pendentes como concluídos antes da execução e captura das evidências.
+**Integrante:** Renan Bacheschi Mafra. O repositório é privado; as capturas incluídas no PDF permitem avaliar as evidências sem acesso à conta.
 
 ---
 
