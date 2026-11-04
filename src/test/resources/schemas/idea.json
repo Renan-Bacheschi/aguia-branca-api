@@ -1,0 +1,13 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": ["id", "title", "problem", "proposedSolution", "expectedBenefits", "strategyId", "authorUserId", "status", "createdAt", "updatedAt"],
+  "properties": {
+    "id": {"type": "string", "minLength": 1}, "title": {"type": "string"}, "problem": {"type": "string"},
+    "proposedSolution": {"type": "string"}, "expectedBenefits": {"type": "string"}, "strategyId": {"type": "string"},
+    "authorUserId": {"type": "string"}, "status": {"type": "string", "enum": ["DRAFT", "SUBMITTED", "APPROVED", "REJECTED"]},
+    "priority": {"type": ["string", "null"]}, "reviewJustification": {"type": ["string", "null"]},
+    "reviewedByUserId": {"type": ["string", "null"]}, "submittedAt": {"type": ["string", "null"]},
+    "reviewedAt": {"type": ["string", "null"]}, "createdAt": {"type": "string"}, "updatedAt": {"type": "string"}
+  }
+}

@@ -1,0 +1,1 @@
+{"$schema":"http://json-schema.org/draft-07/schema#","type":"array","items":{"type":"object","required":["strategyId","revision","operation","changedByUserId","changedAt"],"properties":{"strategyId":{"type":"string"},"revision":{"type":"integer"},"operation":{"type":"string"},"changedByUserId":{"type":"string"},"changedAt":{"type":"string"}}}}

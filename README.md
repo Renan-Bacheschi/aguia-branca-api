@@ -81,6 +81,81 @@ Java 21, Spring Boot 4.1.1, Maven Wrapper, MongoDB 8, Docker, Docker Compose, Gi
 Backend do Challenge Águia Branca com Java 21, Spring Boot 4.1.1, Maven e MongoDB 8.
 O backend implementa autenticação JWT e os fluxos de estratégias, ideias, projetos, progresso e resultados para os perfis `OPERATOR`, `MANAGER` e `LEADER`.
 
+## Fase 7 — Testes de comportamento e contrato da API
+
+Na fase 7, ampliamos os testes existentes com cenários de comportamento em Gherkin e validações de contrato com JSON Schema. Os cenários acompanham o cadastro e a aprovação de ideias ESG e verificam que um operador não pode aprovar a própria proposta. A suíte faz chamadas HTTP à API com autenticação JWT e usa um MongoDB isolado para os testes.
+
+A suíte usa Cucumber 7, JUnit 5, Testcontainers e HTTP real em porta aleatória. Os cenários não usam `MockMvc`, não substituem serviços de negócio e fazem login com JWT gerado pela própria aplicação. O MongoDB é um container `mongo:8` temporário, com base `aguia_branca_bdd`; cada cenário ou teste limpa somente essa base isolada.
+
+O único componente substituído é o provedor externo de análise por IA: um adaptador local determinístico responde durante os testes. Assim, `IdeaAnalysisService`, regras de autorização, persistência e os controllers são reais, mas não há `OPENAI_API_KEY`, chamadas de rede ou consumo de créditos.
+
+Pré-requisitos para a suíte:
+
+- JDK 21. No macOS: `export JAVA_HOME=$(/usr/libexec/java_home -v 21)` e `export PATH="$JAVA_HOME/bin:$PATH"`.
+- Docker Desktop iniciado e o comando `docker info` funcionando. O Testcontainers baixa `mongo:8` na primeira execução.
+
+Execute todo o projeto, incluindo a suíte BDD e os relatórios:
+
+```sh
+./mvnw clean verify
+```
+
+Execute somente os cenários BDD:
+
+```sh
+./mvnw -Dtest=CucumberTest test
+```
+
+Os relatórios ficam em `target/surefire-reports/`, `target/cucumber.html`, `target/cucumber.json` e `target/cucumber-report/cucumber-html-reports/overview-features.html`. Abra o HTML do Cucumber no navegador com `open target/cucumber-report/cucumber-html-reports/overview-features.html` após um `verify` bem-sucedido.
+
+### Cenários ESG em Gherkin
+
+O arquivo `src/test/resources/features/ideias_esg.feature` documenta e executa três fluxos independentes:
+
+1. um operador vincula uma ideia de reaproveitamento de insumos a uma estratégia ativa de redução de desperdício;
+2. um gestor aprova uma ideia submetida, registrando prioridade e justificativa;
+3. um operador tenta avaliar a própria ideia e recebe `403`, mantendo-a em `SUBMITTED`.
+
+### Cobertura HTTP e contratos
+
+Cada chamada abaixo valida status HTTP, valores de negócio relevantes e, quando há JSON, um schema em `src/test/resources/schemas/`. `ApiContractIntegrationTests` cobre chamadas reais de todos os controllers; `JsonSchemaContractTests` também prova que o validador rejeita uma resposta propositalmente incompatível. São 32 operações dos sete controllers mais o healthcheck operacional, totalizando 33 verificações de rota. A diferença em relação à contagem anterior estava no `IdeaController`: `POST /api/v1/ideas/{ideaId}/analysis` e `GET /api/v1/ideas/{ideaId}/analysis` são operações distintas e ambas estão cobertas.
+
+| Método | Rota | Teste/cenário |
+| --- | --- | --- |
+| POST | `/api/v1/auth/login` | `publicStatusAndAuthenticationContracts` |
+| GET | `/api/v1/auth/me` | `publicStatusAndAuthenticationContracts` |
+| GET | `/api/v1/status` | `publicStatusAndAuthenticationContracts` |
+| GET | `/actuator/health` | `publicStatusAndAuthenticationContracts` |
+| POST | `/api/v1/strategies` | `strategyOperationsHaveContractsAndPermissionFailure` |
+| GET | `/api/v1/strategies` | `strategyOperationsHaveContractsAndPermissionFailure` |
+| GET | `/api/v1/strategies/{id}` | `strategyOperationsHaveContractsAndPermissionFailure` |
+| PUT | `/api/v1/strategies/{id}` | `strategyOperationsHaveContractsAndPermissionFailure` |
+| DELETE | `/api/v1/strategies/{id}` | `strategyOperationsHaveContractsAndPermissionFailure` |
+| GET | `/api/v1/strategies/{id}/history` | `strategyOperationsHaveContractsAndPermissionFailure` |
+| POST | `/api/v1/ideas` | cenário de cadastro e `ideaAndAnalysisOperationsHaveContractsAndValidationFailure` |
+| GET | `/api/v1/ideas` | `ideaAndAnalysisOperationsHaveContractsAndValidationFailure` |
+| GET | `/api/v1/ideas/{id}` | `ideaAndAnalysisOperationsHaveContractsAndValidationFailure` |
+| PUT | `/api/v1/ideas/{id}` | `ideaAndAnalysisOperationsHaveContractsAndValidationFailure` |
+| DELETE | `/api/v1/ideas/{id}` | `ideaAndAnalysisOperationsHaveContractsAndValidationFailure` |
+| POST | `/api/v1/ideas/{id}/submit` | cenário de aprovação e `ideaAndAnalysisOperationsHaveContractsAndValidationFailure` |
+| PATCH | `/api/v1/ideas/{id}/review` | cenários de aprovação/negação e `ideaAndAnalysisOperationsHaveContractsAndValidationFailure` |
+| POST | `/api/v1/ideas/{id}/analysis` | `ideaAndAnalysisOperationsHaveContractsAndValidationFailure` |
+| GET | `/api/v1/ideas/{id}/analysis` | `ideaAndAnalysisOperationsHaveContractsAndValidationFailure` |
+| POST | `/api/v1/projects` | `projectsResultsAndReportsHaveContracts` |
+| GET | `/api/v1/projects` | `projectsResultsAndReportsHaveContracts` |
+| GET | `/api/v1/projects/{id}` | `projectsResultsAndReportsHaveContracts` |
+| PUT | `/api/v1/projects/{id}` | `projectsResultsAndReportsHaveContracts` |
+| DELETE | `/api/v1/projects/{id}` | `projectsResultsAndReportsHaveContracts` |
+| PATCH | `/api/v1/projects/{id}/progress` | `projectsResultsAndReportsHaveContracts` |
+| POST | `/api/v1/projects/{id}/results` | `projectsResultsAndReportsHaveContracts` |
+| GET | `/api/v1/projects/{id}/results` | `projectsResultsAndReportsHaveContracts` |
+| GET | `/api/v1/projects/{id}/results/{resultId}` | `projectsResultsAndReportsHaveContracts` |
+| PUT | `/api/v1/projects/{id}/results/{resultId}` | `projectsResultsAndReportsHaveContracts` |
+| DELETE | `/api/v1/projects/{id}/results/{resultId}` | `projectsResultsAndReportsHaveContracts` |
+| GET | `/api/v1/reports/summary` | `projectsResultsAndReportsHaveContracts` |
+| GET | `/api/v1/reports/strategies/{strategyId}` | `projectsResultsAndReportsHaveContracts` |
+| GET | `/api/v1/reports/projects/{projectId}` | `projectsResultsAndReportsHaveContracts` |
+
 ## Requisitos
 
 - JDK 21.
